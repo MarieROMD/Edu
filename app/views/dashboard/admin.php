@@ -1,4 +1,9 @@
 <?php
+// ─── Fix 1 : session_start() obligatoire avant tout accès à $_SESSION
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 $activeTab     = $activeTab     ?? 'dashboard';
 $stats         = $stats         ?? [];
 $recentUsers   = $recentUsers   ?? [];
@@ -6,8 +11,20 @@ $recentEvents  = $recentEvents  ?? [];
 $chart         = $chart         ?? ['labels' => [], 'data' => []];
 $users         = $users         ?? [];
 $eventStats    = $eventStats    ?? [];
-$feedbacks     = $feedbacks     ?? [];
+
+$feedbacks     = isset($feedbacks) && is_array($feedbacks) ? $feedbacks : [];
 $feedbackStats = $feedbackStats ?? ['total' => 0, 'moyenne' => '—', 'cinq' => 0];
+
+function formatDateFr(string $dateStr): string {
+    $mois = [
+        1  => 'jan', 2  => 'fév', 3  => 'mar', 4  => 'avr',
+        5  => 'mai', 6  => 'jui', 7  => 'jul', 8  => 'aoû',
+        9  => 'sep', 10 => 'oct', 11 => 'nov', 12 => 'déc',
+    ];
+    $ts = strtotime($dateStr);
+    if ($ts === false) return htmlspecialchars($dateStr, ENT_QUOTES, 'UTF-8');
+    return date('d', $ts) . ' ' . $mois[(int) date('n', $ts)] . ' ' . date('Y', $ts);
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -32,27 +49,30 @@ $feedbackStats = $feedbackStats ?? ['total' => 0, 'moyenne' => '—', 'cinq' => 
   <div class="nav-section-label">Gestion</div>
   <a href="/Edu/public/admin/users"
      class="nav-item <?= $activeTab === 'users' ? 'active' : '' ?>">
-    Users <span class="nav-badge"><?= $stats['users'] ?? 0 ?></span>
+    Users <span class="nav-badge"><?= (int)($stats['users'] ?? 0) ?></span>
   </a>
   <a href="/Edu/public/admin/events"
      class="nav-item <?= $activeTab === 'events' ? 'active' : '' ?>">
-    Events <span class="nav-badge"><?= $stats['events'] ?? 0 ?></span>
+    Events <span class="nav-badge"><?= (int)($stats['events'] ?? 0) ?></span>
   </a>
   <a href="/Edu/public/admin/categories"
      class="nav-item <?= $activeTab === 'categories' ? 'active' : '' ?>">
-    Catégories <span class="nav-badge"><?= $stats['categories'] ?? 0 ?></span>
+    Catégories <span class="nav-badge"><?= (int)($stats['categories'] ?? 0) ?></span>
   </a>
   <a href="/Edu/public/admin/participations"
      class="nav-item <?= $activeTab === 'participations' ? 'active' : '' ?>">
-    Participations <span class="nav-badge"><?= $stats['total_participations'] ?? 0 ?></span>
+    Participations <span class="nav-badge"><?= (int)($stats['total_participations'] ?? 0) ?></span>
   </a>
   <a href="/Edu/public/admin/feedbacks"
      class="nav-item <?= $activeTab === 'feedbacks' ? 'active' : '' ?>">
-    Feedbacks <span class="nav-badge"><?= $feedbackStats['total'] ?? 0 ?></span>
+    Feedbacks <span class="nav-badge" id="feedback-badge"><?= (int)($feedbackStats['total'] ?? 0) ?></span>
   </a>
 
   <div class="sidebar-footer">
-    <?= htmlspecialchars($_SESSION['username'] ?? 'Admin') ?> · <?= date('d M Y') ?>
+    <?php
+    echo htmlspecialchars($_SESSION['username'] ?? 'Admin', ENT_QUOTES, 'UTF-8');
+    ?>
+    · <?= date('d/m/Y') ?>
     <a href="/Edu/public/logout" class="btn-logout">⏻ Déconnexion</a>
   </div>
 </nav>
@@ -69,27 +89,27 @@ $feedbackStats = $feedbackStats ?? ['total' => 0, 'moyenne' => '—', 'cinq' => 
   <div class="stats-grid">
     <div class="stat-card">
       <div class="stat-label">Total Users</div>
-      <div class="stat-value"><?= $stats['users'] ?? 0 ?></div>
+      <div class="stat-value"><?= (int)($stats['users'] ?? 0) ?></div>
     </div>
     <div class="stat-card">
       <div class="stat-label">Events</div>
-      <div class="stat-value"><?= $stats['events'] ?? 0 ?></div>
+      <div class="stat-value"><?= (int)($stats['events'] ?? 0) ?></div>
     </div>
     <div class="stat-card">
       <div class="stat-label">Nouveaux (7j)</div>
-      <div class="stat-value"><?= $stats['new_users_7d'] ?? 0 ?></div>
+      <div class="stat-value"><?= (int)($stats['new_users_7d'] ?? 0) ?></div>
     </div>
     <div class="stat-card">
       <div class="stat-label">Events aujourd'hui</div>
-      <div class="stat-value"><?= $stats['events_today'] ?? 0 ?></div>
+      <div class="stat-value"><?= (int)($stats['events_today'] ?? 0) ?></div>
     </div>
     <div class="stat-card">
       <div class="stat-label">Participations</div>
-      <div class="stat-value"><?= $stats['total_participations'] ?? 0 ?></div>
+      <div class="stat-value"><?= (int)($stats['total_participations'] ?? 0) ?></div>
     </div>
     <div class="stat-card">
       <div class="stat-label">Feedbacks</div>
-      <div class="stat-value"><?= $feedbackStats['total'] ?? 0 ?></div>
+      <div class="stat-value"><?= (int)($feedbackStats['total'] ?? 0) ?></div>
     </div>
   </div>
 
@@ -109,9 +129,9 @@ $feedbackStats = $feedbackStats ?? ['total' => 0, 'moyenne' => '—', 'cinq' => 
       <tbody>
         <?php foreach ($recentUsers as $u): ?>
         <tr>
-          <td><?= htmlspecialchars($u['username']) ?></td>
-          <td><?= htmlspecialchars($u['email']) ?></td>
-          <td><?= $u['role'] ?></td>
+          <td><?= htmlspecialchars($u['username'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
+          <td><?= htmlspecialchars($u['email']    ?? '', ENT_QUOTES, 'UTF-8') ?></td>
+          <td><?= htmlspecialchars($u['role']     ?? '', ENT_QUOTES, 'UTF-8') ?></td>
         </tr>
         <?php endforeach; ?>
       </tbody>
@@ -126,8 +146,13 @@ $feedbackStats = $feedbackStats ?? ['total' => 0, 'moyenne' => '—', 'cinq' => 
       <tbody>
         <?php foreach ($recentEvents as $e): ?>
         <tr>
-          <td><?= htmlspecialchars($e['titre']) ?></td>
-          <td><?= date('d M Y', strtotime($e['date_event'])) ?></td>
+          <td><?= htmlspecialchars($e['titre'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
+          <?php
+          $dateEvent = isset($e['date_event']) && $e['date_event'] !== ''
+              ? formatDateFr($e['date_event'])
+              : '—';
+          ?>
+          <td><?= $dateEvent ?></td>
         </tr>
         <?php endforeach; ?>
       </tbody>
@@ -143,21 +168,24 @@ $feedbackStats = $feedbackStats ?? ['total' => 0, 'moyenne' => '—', 'cinq' => 
     <table>
       <thead><tr><th>Membre</th><th>Message</th><th>Note</th><th>Date</th></tr></thead>
       <tbody>
-        <?php foreach (array_slice($feedbacks, 0, 5) as $fb): ?>
+        <?php
+        foreach (array_slice($feedbacks, 0, 5) as $fb):
+            $note = isset($fb['note']) && $fb['note'] > 0 ? (int)$fb['note'] : 0;
+        ?>
         <tr>
-          <td><?= htmlspecialchars($fb['username']) ?></td>
+          <td><?= htmlspecialchars($fb['username'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
           <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-            <?= htmlspecialchars($fb['message']) ?>
+            <?= htmlspecialchars($fb['message'] ?? '', ENT_QUOTES, 'UTF-8') ?>
           </td>
           <td>
-            <?php if ($fb['note']): ?>
-              <span style="color:#EF9F27"><?= str_repeat('★', $fb['note']) ?></span>
+            <?php if ($note > 0): ?>
+              <span style="color:#EF9F27"><?= str_repeat('★', min($note, 5)) ?></span>
             <?php else: ?>
               <span style="color:#9ca3af">—</span>
             <?php endif; ?>
           </td>
           <td style="color:#9ca3af;font-size:.8rem">
-            <?= date('d M Y', strtotime($fb['created_at'])) ?>
+            <?= isset($fb['created_at']) ? formatDateFr($fb['created_at']) : '—' ?>
           </td>
         </tr>
         <?php endforeach; ?>
@@ -170,7 +198,7 @@ $feedbackStats = $feedbackStats ?? ['total' => 0, 'moyenne' => '—', 'cinq' => 
   new Chart(document.getElementById('chartUsers'), {
     type: 'line',
     data: {
-      labels: <?= json_encode($chart['labels']) ?>,
+      labels: <?= json_encode($chart['labels'], JSON_UNESCAPED_UNICODE) ?>,
       datasets: [{
         data: <?= json_encode($chart['data']) ?>,
         borderColor: '#534AB7',
@@ -228,5 +256,57 @@ $feedbackStats = $feedbackStats ?? ['total' => 0, 'moyenne' => '—', 'cinq' => 
 <?php endif; ?>
 
 </main>
+
+<style>
+@keyframes pulse {
+  0%,100% { transform: scale(1); }
+  50%      { transform: scale(1.3); }
+}
+.nav-badge.has-new {
+  background: #E24B4A;
+  color: #fff;
+  animation: pulse .6s ease 3;
+}
+</style>
+
+<script>
+(function () {
+  const BASE  = '/Edu/public';
+  let lastId  = 0;
+
+  function poll() {
+    fetch(BASE + '/notifs/stream?last=' + encodeURIComponent(lastId))
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      })
+      .then(function (text) {
+        // Extraire le JSON après "data: "
+        var match = text.match(/data:\s*(\{.*\})/);
+        if (!match) return;
+        var data = JSON.parse(match[1]);
+
+        var badgeEl = document.getElementById('feedback-badge');
+
+        if (data.feedbacks > 0 && badgeEl) {
+          badgeEl.textContent = '+' + data.feedbacks;
+        
+          badgeEl.classList.remove('has-new');
+          void badgeEl.offsetWidth; 
+          badgeEl.classList.add('has-new');
+        }
+
+        if (typeof data.maxId === 'number' && data.maxId > lastId) {
+          lastId = data.maxId;
+        }
+      })
+      .catch(function () {  })
+      .finally(function () { setTimeout(poll, 30000); });
+  }
+
+  setTimeout(poll, 5000);
+})();
+</script>
+
 </body>
 </html>

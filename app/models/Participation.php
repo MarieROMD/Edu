@@ -11,25 +11,23 @@ class Participation {
             return false;
         }
 
-        $event = $this->db->prepare("
-            SELECT (e.capacite - COUNT(p.id)) AS places_restantes
-            FROM evenements e
-            LEFT JOIN participations p ON e.id = p.event_id
-            WHERE e.id = ?
-            GROUP BY e.id
-        ");
-        $event->execute([$eventId]);
-        $row = $event->fetch(PDO::FETCH_ASSOC);
+         $stmt = $this->db->prepare("
+        SELECT (e.capacite - COUNT(p.id)) AS places_restantes
+        FROM evenements e
+        LEFT JOIN participations p ON e.id = p.event_id
+        WHERE e.id = ? GROUP BY e.id
+    ");
+    $stmt->execute([$eventId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row || $row['places_restantes'] <= 0) return false;
 
-        if (!$row || $row['places_restantes'] <= 0) {
-            return false; 
-        }
+    $token = bin2hex(random_bytes(16));
 
-        $stmt = $this->db->prepare(
-            "INSERT INTO participations(user_id, event_id) VALUES(?, ?)"
-        );
-        $stmt->execute([$userId, $eventId]);
-        return true;
+    $stmt = $this->db->prepare(
+        "INSERT INTO participations(user_id, event_id, token) VALUES(?, ?, ?)"
+    );
+    $stmt->execute([$userId, $eventId, $token]);
+    return true;
     }
 
     public function leave(int $userId, int $eventId): void {
@@ -83,4 +81,32 @@ class Participation {
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 }
+public function findByToken(string $token): array|false {
+    $stmt = $this->db->prepare("
+        SELECT p.*, u.username, u.email, e.titre AS event_titre, e.date_event
+        FROM participations p
+        JOIN users u      ON u.id = p.user_id
+        JOIN evenements e ON e.id = p.event_id
+        WHERE p.token = ?
+    ");
+    $stmt->execute([$token]);
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+public function confirmPresence(string $token): bool {
+    $stmt = $this->db->prepare(
+        "UPDATE participations SET presence = 1 WHERE token = ?"
+    );
+    $stmt->execute([$token]);
+    return $stmt->rowCount() > 0;
+}
+
+public function getWithToken(int $userId, int $eventId): array|false {
+    $stmt = $this->db->prepare(
+        "SELECT * FROM participations WHERE user_id = ? AND event_id = ?"
+    );
+    $stmt->execute([$userId, $eventId]);
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
 }

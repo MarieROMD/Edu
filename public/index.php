@@ -18,6 +18,9 @@ require_once __DIR__ . '/../app/controllers/UserController.php';
 require_once __DIR__ . '/../app/controllers/CategoryController.php';
 require_once __DIR__ . '/../app/models/Feedback.php';
 require_once __DIR__ . '/../app/controllers/FeedbackController.php';
+require_once __DIR__ . '/../app/controllers/ProfileController.php';
+require_once __DIR__ . '/../app/controllers/NotifController.php';
+require_once __DIR__ . '/../app/controllers/ExportController.php';
 $router = new Router('/Edu/public');
 
 $router->get('/',             [HomeController::class,   'index']);
@@ -55,5 +58,11 @@ $router->post('/events/store',   [EventController::class, 'store']);
 $router->post('/events/delete',  [EventController::class, 'delete']);
 $router->post('/events/join',  [EventController::class, 'join']);
 $router->post('/events/leave', [EventController::class, 'leave']);
+$router->get('/profile',  [ProfileController::class, 'show']);
+$router->post('/profile', [ProfileController::class, 'update']);
 
+$router->get('/notifs/stream', [NotifController::class, 'stream']);
+
+$router->get('/admin/export/event',       [ExportController::class, 'eventParticipants']);
+$router->get('/client/export/inscriptions',[ExportController::class, 'myEvents']);
 $router->dispatch();

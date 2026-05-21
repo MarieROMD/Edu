@@ -17,7 +17,7 @@ class DashboardController {
         $recentUsers  = $statsModel->getRecentUsers();
         $recentEvents = $statsModel->getRecentEvents();
         $chart        = $statsModel->getUsersChart();
-          $feedbacks     = $feedbackModel->getAll();        // ← pour le tableau résumé
+          $feedbacks     = $feedbackModel->getAll();       
         $feedbackStats = $feedbackModel->getStats(); 
         $activeTab    = 'dashboard';
         require __DIR__ . '/../views/dashboard/admin.php';
@@ -80,7 +80,7 @@ public function feedbacks(): void {
     $eventModel    = new Event;
 
   
-    $events        = $eventModel->getUpcoming();
+    $events        = $eventModel->getAllWithStats();
 
    
     $userEventIds  = $participation->getEventIdsByUser($userId);

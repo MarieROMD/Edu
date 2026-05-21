@@ -61,4 +61,11 @@ class User {
             "SELECT id, username, email, role FROM users ORDER BY id DESC"
         )->fetchAll(PDO::FETCH_ASSOC);
     }
+    public function updateProfile(int $id, string $username, string $email): bool {
+    if ($this->emailExistsExcept($email, $id)) return false;
+    $this->db->prepare(
+        "UPDATE users SET username=?, email=? WHERE id=?"
+    )->execute([$username, $email, $id]);
+    return true;
+}
 }

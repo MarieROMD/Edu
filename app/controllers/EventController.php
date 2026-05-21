@@ -22,22 +22,26 @@ class EventController {
             echo json_encode(['success' => false, 'message' => 'Événement invalide']); return;
         }
 
-        $success = (new Participation)->join(
-    $_SESSION['user_id'],
-    $eventId
-);
+        $participation = new Participation;
+        $success = $participation->join($_SESSION['user_id'], $eventId);
 
-if ($success) {
-    echo json_encode([
-        'success' => true,
-        'message' => 'Inscription réussie'
-    ]);
-} else {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Événement complet ou déjà inscrit'
-    ]);
-}
+        if ($success) {
+            $user  = (new User)->findById($_SESSION['user_id']);
+            $event = (new Event)->findById($eventId);
+            if ($user && $event) {
+                EmailService::sendConfirmation(
+                    $user['email'],
+                    $user['username'],
+                    $event['titre'],
+                    $event['date_event'],
+                    $event['id']
+                );
+            }
+            //───────────────────────────────────
+            echo json_encode(['success' => true, 'message' => 'Inscription réussie']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Événement complet ou déjà inscrit']);
+        }
     }
 
     public function save(): void {
